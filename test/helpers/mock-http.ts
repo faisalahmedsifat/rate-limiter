@@ -18,6 +18,22 @@ export interface MockFastifyReply {
   send: (payload: unknown) => void;
 }
 
+export interface MockHonoContext {
+  headers: Record<string, string>;
+  json: (body: unknown, status?: number) => Response;
+  req: {
+    raw: Request;
+    header(name: string): string | undefined;
+  };
+  header(name: string, value: string): void;
+}
+
+export interface MockNestResponse {
+  headers: Record<string, string>;
+  header(name: string, value: string): void;
+  setHeader(name: string, value: string): void;
+}
+
 export function createMockExpressResponse(): MockExpressResponse {
   return {
     body: undefined,
@@ -55,6 +71,36 @@ export function createMockFastifyReply(): MockFastifyReply {
     },
     send(payload: unknown): void {
       this.payload = payload;
+    },
+  };
+}
+
+export function createMockHonoContext(request: Request): MockHonoContext {
+  return {
+    headers: {},
+    req: {
+      raw: request,
+      header(name: string): string | undefined {
+        return request.headers.get(name) ?? undefined;
+      },
+    },
+    header(name: string, value: string): void {
+      this.headers[name] = value;
+    },
+    json(body: unknown, status = 200): Response {
+      return Response.json(body, { status, headers: this.headers });
+    },
+  };
+}
+
+export function createMockNestResponse(): MockNestResponse {
+  return {
+    headers: {},
+    header(name: string, value: string): void {
+      this.headers[name] = value;
+    },
+    setHeader(name: string, value: string): void {
+      this.headers[name] = value;
     },
   };
 }

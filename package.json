@@ -22,6 +22,22 @@
       "types": "./dist/adapters/fastify.d.ts",
       "import": "./dist/adapters/fastify.js"
     },
+    "./adapters/fetch": {
+      "types": "./dist/adapters/fetch.d.ts",
+      "import": "./dist/adapters/fetch.js"
+    },
+    "./adapters/hono": {
+      "types": "./dist/adapters/hono.d.ts",
+      "import": "./dist/adapters/hono.js"
+    },
+    "./adapters/next": {
+      "types": "./dist/adapters/next.d.ts",
+      "import": "./dist/adapters/next.js"
+    },
+    "./adapters/nest": {
+      "types": "./dist/adapters/nest.d.ts",
+      "import": "./dist/adapters/nest.js"
+    },
     "./stores/redis": {
       "types": "./dist/stores/redis-store.d.ts",
       "import": "./dist/stores/redis-store.js"
@@ -40,6 +56,10 @@
     "rate-limit",
     "rate-limiter",
     "redis",
+    "bun",
+    "hono",
+    "nextjs",
+    "nestjs",
     "express",
     "fastify",
     "token-bucket",

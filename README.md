@@ -1,6 +1,6 @@
 # `@xyph3r/rate-limiter`
 
-Framework-agnostic rate limiting for Node.js with two clear goals:
+Framework-agnostic rate limiting for Node.js and fetch-based runtimes with two clear goals:
 
 - keep the core API small enough to use without ceremony
 - keep the internals structured enough to stay maintainable when requirements change
@@ -10,6 +10,7 @@ The package follows the architecture laid out in `.idea.md`:
 - `Strategy`: sliding window and token bucket are swappable algorithms
 - `Builder`: fluent construction for readable setup
 - `Decorator`: optional Express and Fastify adapters wrap the core
+- `Decorator`: fetch/Hono/Next/Nest integrations stay outside the core
 - `Proxy`: short-lived decision caching for hot paths
 
 ## Install
@@ -30,6 +31,27 @@ const limiter = new RateLimiterBuilder()
   .build();
 
 app.use(createExpressRateLimit(limiter));
+```
+
+## Bun
+
+For Bun's native `fetch` handler, use the shared fetch adapter:
+
+```ts
+import { createFetchRateLimit, RateLimiterBuilder } from "@xyph3r/rate-limiter";
+
+const limiter = new RateLimiterBuilder()
+  .forSlidingWindow({ limit: 100, windowMs: 60_000 })
+  .withMemoryStore()
+  .build();
+
+const withRateLimit = createFetchRateLimit(limiter);
+
+Bun.serve({
+  fetch: withRateLimit(async () => {
+    return Response.json({ ok: true });
+  }),
+});
 ```
 
 ## Core usage
@@ -150,6 +172,25 @@ app.use(
 );
 ```
 
+## Hono adapter
+
+```ts
+import { Hono } from "hono";
+import {
+  createHonoRateLimit,
+  RateLimiterBuilder,
+} from "@xyph3r/rate-limiter";
+
+const app = new Hono();
+
+const limiter = new RateLimiterBuilder()
+  .forSlidingWindow({ limit: 20, windowMs: 1_000 })
+  .withMemoryStore()
+  .build();
+
+app.use("*", createHonoRateLimit(limiter));
+```
+
 ## Fastify adapter
 
 ```ts
@@ -169,6 +210,52 @@ const limiter = new RateLimiterBuilder()
 app.addHook("preHandler", createFastifyRateLimit(limiter));
 ```
 
+## Next.js route handlers
+
+For App Router route handlers, wrap the exported handler:
+
+```ts
+import { createNextRateLimit, RateLimiterBuilder } from "@xyph3r/rate-limiter";
+
+const limiter = new RateLimiterBuilder()
+  .forSlidingWindow({ limit: 30, windowMs: 60_000 })
+  .withMemoryStore()
+  .build();
+
+const withRateLimit = createNextRateLimit(limiter);
+
+export const GET = withRateLimit(async () => {
+  return Response.json({ ok: true });
+});
+```
+
+You can also use `key(request, context)` to derive limits from route params, session data, or tenant IDs.
+
+## NestJS guard
+
+Nest is exposed as a guard-shaped decorator. Pass your own exception from `@nestjs/common` so the framework returns a proper `429`.
+
+```ts
+import { TooManyRequestsException } from "@nestjs/common";
+import {
+  createNestRateLimitGuard,
+  RateLimiterBuilder,
+} from "@xyph3r/rate-limiter";
+
+const limiter = new RateLimiterBuilder()
+  .forSlidingWindow({ limit: 10, windowMs: 1_000 })
+  .withMemoryStore()
+  .build();
+
+export const RateLimitGuard = createNestRateLimitGuard(limiter, {
+  errorFactory: (decision) =>
+    new TooManyRequestsException({
+      error: "Too many requests",
+      retryAfterMs: decision.retryAfterMs,
+    }),
+});
+```
+
 ## Public API
 
 ### `RateLimiterBuilder`
@@ -185,6 +272,14 @@ app.addHook("preHandler", createFastifyRateLimit(limiter));
 - `check(key, { cost? })`
 - `reset(key)`
 
+### Adapters
+
+- `createFetchRateLimit()` for Bun or any fetch-native runtime
+- `createHonoRateLimit()` for Hono middleware
+- `createNextRateLimit()` for Next.js App Router handlers
+- `createNestRateLimitGuard()` for NestJS HTTP guards
+- `createExpressRateLimit()` and `createFastifyRateLimit()`
+
 ### Decision fields
 
 - `allowed`
@@ -200,3 +295,4 @@ app.addHook("preHandler", createFastifyRateLimit(limiter));
 - The memory store is process-local. Use Redis for multi-instance deployments.
 - Redis execution is atomic because each strategy ships its own Lua program.
 - The sliding window implementation uses a weighted previous-window approximation rather than a timestamp log. That keeps storage compact and predictable.
+- Bun, Hono, and Next.js all use the fetch-compatible adapter surface under the hood.

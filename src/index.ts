@@ -30,6 +30,30 @@ export {
 export type { RateLimitStore } from "./stores/rate-limit-store.js";
 export { createExpressRateLimit } from "./adapters/express.js";
 export { createFastifyRateLimit } from "./adapters/fastify.js";
+export {
+  createFetchRateLimit,
+  type FetchLikeHandler,
+  type FetchRateLimitOptions,
+} from "./adapters/fetch.js";
+export {
+  createHonoRateLimit,
+  type HonoLikeContext,
+  type HonoLikeRequest,
+  type HonoRateLimitOptions,
+} from "./adapters/hono.js";
+export {
+  createNextRateLimit,
+  type NextRateLimitOptions,
+  type NextRouteHandler,
+} from "./adapters/next.js";
+export {
+  createNestRateLimitGuard,
+  type NestExecutionContext,
+  type NestHttpArgumentsHost,
+  type NestLikeRequest,
+  type NestLikeResponse,
+  type NestRateLimitOptions,
+} from "./adapters/nest.js";
 export type {
   RateLimitCheckOptions,
   RateLimitDecision,

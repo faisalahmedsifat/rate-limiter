@@ -2,11 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createExpressRateLimit } from "../src/adapters/express.js";
+import { createFetchRateLimit } from "../src/adapters/fetch.js";
 import { createFastifyRateLimit } from "../src/adapters/fastify.js";
+import { createHonoRateLimit } from "../src/adapters/hono.js";
+import { createNestRateLimitGuard } from "../src/adapters/nest.js";
+import { createNextRateLimit } from "../src/adapters/next.js";
 import { RateLimiterBuilder } from "../src/core/rate-limiter-builder.js";
 import {
   createMockExpressResponse,
   createMockFastifyReply,
+  createMockHonoContext,
+  createMockNestResponse,
 } from "./helpers/mock-http.js";
 
 test("express decorator sets headers and rejects over-limit requests", async () => {
@@ -192,4 +198,147 @@ test("fastify decorator supports skip and custom rejection", async () => {
   assert.equal(reply.statusCode, 451);
   assert.equal(reply.headers["ratelimit-limit"], undefined);
   assert.equal(reply.payload, "blocked:client");
+});
+
+test("fetch decorator works for Bun-style handlers and decorates the response", async () => {
+  let now = 0;
+  const limiter = new RateLimiterBuilder()
+    .withMemoryStore()
+    .forSlidingWindow({ limit: 1, windowMs: 1_000 })
+    .withClock(() => now)
+    .build();
+  const withRateLimit = createFetchRateLimit(limiter);
+
+  const handler = withRateLimit(async () => new Response("ok", { status: 201 }));
+  const first = await handler(
+    new Request("https://example.com", {
+      headers: { "x-forwarded-for": "10.0.0.1" },
+    }),
+    undefined,
+  );
+
+  assert.equal(first.status, 201);
+  assert.equal(first.headers.get("ratelimit-limit"), "1");
+
+  now = 10;
+  const second = await handler(
+    new Request("https://example.com", {
+      headers: { "x-forwarded-for": "10.0.0.1" },
+    }),
+    undefined,
+  );
+
+  assert.equal(second.status, 429);
+  assert.equal(second.headers.get("retry-after"), "1");
+  assert.deepEqual(await second.json(), {
+    error: "Too many requests",
+    limit: 1,
+    remaining: 0,
+    retryAfterMs: 990,
+  });
+});
+
+test("next adapter wraps route handlers with fetch semantics", async () => {
+  const limiter = new RateLimiterBuilder()
+    .withMemoryStore()
+    .forSlidingWindow({ limit: 5, windowMs: 1_000 })
+    .build();
+  const withRateLimit = createNextRateLimit(limiter, {
+    key: async (_request, context: { params: { id: string } }) => context.params.id,
+  });
+
+  const handler = withRateLimit(async (_request, context: { params: { id: string } }) => {
+    return Response.json({ id: context.params.id });
+  });
+
+  const response = await handler(new Request("https://example.com"), {
+    params: { id: "route-1" },
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { id: "route-1" });
+  assert.equal(response.headers.get("ratelimit-limit"), "5");
+});
+
+test("hono adapter behaves like middleware and returns a rejected response when blocked", async () => {
+  let now = 0;
+  const limiter = new RateLimiterBuilder()
+    .withMemoryStore()
+    .forSlidingWindow({ limit: 1, windowMs: 1_000 })
+    .withClock(() => now)
+    .build();
+  const middleware = createHonoRateLimit(limiter);
+
+  let nextCalls = 0;
+  const firstContext = createMockHonoContext(
+    new Request("https://example.com", {
+      headers: { "cf-connecting-ip": "203.0.113.10" },
+    }),
+  );
+  const first = await middleware(firstContext, async () => {
+    nextCalls += 1;
+  });
+
+  assert.equal(first, undefined);
+  assert.equal(nextCalls, 1);
+  assert.equal(firstContext.headers["ratelimit-limit"], "1");
+
+  now = 10;
+  const secondContext = createMockHonoContext(
+    new Request("https://example.com", {
+      headers: { "cf-connecting-ip": "203.0.113.10" },
+    }),
+  );
+  const second = await middleware(secondContext, async () => {
+    throw new Error("should not continue");
+  });
+
+  assert.equal(second?.status, 429);
+  assert.equal(secondContext.headers["retry-after"], "1");
+  assert.deepEqual(await second?.json(), {
+    error: "Too many requests",
+    limit: 1,
+    remaining: 0,
+    retryAfterMs: 990,
+  });
+});
+
+test("nest adapter exposes a guard-shaped integration and throws on rejection", async () => {
+  let now = 0;
+  const limiter = new RateLimiterBuilder()
+    .withMemoryStore()
+    .forSlidingWindow({ limit: 1, windowMs: 1_000 })
+    .withClock(() => now)
+    .build();
+  const guard = createNestRateLimitGuard(limiter, {
+    errorFactory: (decision) => {
+      const error = new Error(`blocked:${decision.retryAfterMs}`);
+      Object.assign(error, { statusCode: 429 });
+      return error;
+    },
+  });
+
+  const request = { headers: {}, ip: "127.0.0.1" };
+  const response = createMockNestResponse();
+  const context = {
+    switchToHttp() {
+      return {
+        getRequest() {
+          return request;
+        },
+        getResponse() {
+          return response;
+        },
+      };
+    },
+  };
+
+  const first = await guard.canActivate(context);
+  assert.equal(first, true);
+  assert.equal(response.headers["ratelimit-limit"], "1");
+
+  now = 10;
+  await assert.rejects(() => guard.canActivate(context), {
+    message: "blocked:990",
+  });
 });

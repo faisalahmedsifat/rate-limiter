@@ -296,3 +296,15 @@ export const RateLimitGuard = createNestRateLimitGuard(limiter, {
 - Redis execution is atomic because each strategy ships its own Lua program.
 - The sliding window implementation uses a weighted previous-window approximation rather than a timestamp log. That keeps storage compact and predictable.
 - Bun, Hono, and Next.js all use the fetch-compatible adapter surface under the hood.
+
+## Publishing
+
+The package is set up so `npm publish` builds `dist/` during `prepack` and runs the test suite during `prepublishOnly`.
+
+Release flow:
+
+1. Install dev dependencies with `npm install`.
+2. Verify the package locally with `npm test`.
+3. Inspect the publish tarball with `npm pack --dry-run`.
+4. Log in with `npm login` if needed, then confirm the target account with `npm whoami`.
+5. Publish the public scoped package with `npm publish --access public --provenance`.

@@ -2,8 +2,11 @@
   "name": "@xyph3r/rate-limiter",
   "version": "0.1.0",
   "description": "Framework-agnostic rate limiting for Node.js with sliding window and token bucket strategies.",
+  "author": "xyph3r",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
+  "packageManager": "npm@10.8.2",
   "files": [
     "dist"
   ],
@@ -45,16 +48,39 @@
     "./stores/memory": {
       "types": "./dist/stores/memory-store.d.ts",
       "import": "./dist/stores/memory-store.js"
-    }
+    },
+    "./package.json": "./package.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/faisalahmedsifat/rate-limiter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/faisalahmedsifat/rate-limiter/issues"
+  },
+  "homepage": "https://github.com/faisalahmedsifat/rate-limiter#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
-    "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && node --test .test-dist/test/*.test.js"
+    "test": "bun test test/*.test.ts",
+    "test:node": "rm -rf .test-dist && tsc -p tsconfig.test.json && node --test .test-dist/test/*.test.js",
+    "prepack": "node ./node_modules/typescript/bin/tsc -p tsconfig.build.json",
+    "prepublishOnly": "rm -rf .test-dist && node ./node_modules/typescript/bin/tsc -p tsconfig.test.json && node --test .test-dist/test/*.test.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
   },
   "keywords": [
     "rate-limit",
     "rate-limiter",
+    "ratelimit",
+    "ratelimiter",
     "redis",
     "bun",
     "hono",
@@ -64,9 +90,5 @@
     "fastify",
     "token-bucket",
     "sliding-window"
-  ],
-  "license": "MIT",
-  "engines": {
-    "node": ">=20"
-  }
+  ]
 }

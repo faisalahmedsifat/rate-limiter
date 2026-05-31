@@ -1,6 +1,6 @@
 {
   "name": "@xyph3r/rate-limiter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-agnostic rate limiting for Node.js with sliding window and token bucket strategies.",
   "author": "xyph3r",
   "license": "MIT",

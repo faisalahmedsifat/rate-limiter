@@ -1,0 +1,52 @@
+{
+  "name": "@xyph3r/rate-limiter",
+  "version": "0.1.0",
+  "description": "Framework-agnostic rate limiting for Node.js with sliding window and token bucket strategies.",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./adapters/express": {
+      "types": "./dist/adapters/express.d.ts",
+      "import": "./dist/adapters/express.js"
+    },
+    "./adapters/fastify": {
+      "types": "./dist/adapters/fastify.d.ts",
+      "import": "./dist/adapters/fastify.js"
+    },
+    "./stores/redis": {
+      "types": "./dist/stores/redis-store.d.ts",
+      "import": "./dist/stores/redis-store.js"
+    },
+    "./stores/memory": {
+      "types": "./dist/stores/memory-store.d.ts",
+      "import": "./dist/stores/memory-store.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "test": "tsc -p tsconfig.test.json && node --test .test-dist/test/*.test.js"
+  },
+  "keywords": [
+    "rate-limit",
+    "rate-limiter",
+    "redis",
+    "express",
+    "fastify",
+    "token-bucket",
+    "sliding-window"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

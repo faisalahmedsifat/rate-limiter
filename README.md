@@ -5,7 +5,7 @@ Framework-agnostic rate limiting for Node.js and fetch-based runtimes with two c
 - keep the core API small enough to use without ceremony
 - keep the internals structured enough to stay maintainable when requirements change
 
-The package follows the architecture laid out in `.idea.md`:
+The package is organized around a few deliberate design choices:
 
 - `Strategy`: sliding window and token bucket are swappable algorithms
 - `Builder`: fluent construction for readable setup
